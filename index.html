@@ -10,51 +10,58 @@
             margin: 0;
             padding: 0;
             background-color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
         }
         .dashboard {
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px;
+            justify-content: center;
+            height: 100%;
+            padding: 10px;
         }
         .table-container {
-            margin: 20px auto;
-            width: 100%; /* Ocupa todo el ancho disponible */
-            padding: 15px;
-            background-color: #f9f9f9;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            overflow-x: auto; /* Permitir desplazamiento horizontal si es necesario */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
         }
         h2 {
-            text-align: center; /* Centramos el título */
+            text-align: center;
+            margin: 0;
+            font-size: 1.5rem;
             color: #333;
+            padding: 10px 0;
         }
         table {
-            width: 100%; /* La tabla ocupa todo el ancho del contenedor */
+            width: 100%;
+            height: calc(100% - 2rem);
             border-collapse: collapse;
-            margin-top: 10px;
+            table-layout: auto;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            font-size: 0.9rem;
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        th:nth-child(6), /* Descripción */
+        td:nth-child(6) {
+            text-align: left;
+            width: 25%;
         }
         th {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center; /* Centramos los encabezados */
-            font-size: 0.9rem; /* Tamaño más compacto */
             background-color: #4CAF50;
             color: white;
-            text-transform: uppercase; /* Transformar a mayúsculas */
-        }
-        td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left; /* Alineamos los datos a la izquierda */
-            font-size: 0.9rem;
-        }
-        td:nth-child(7), /* BULTOS */
-        td:nth-child(9), /* MESES FALTANTES */
-        td:nth-child(10) /* DIAS FALTANTES */ {
-            text-align: center; /* Centramos los datos */
         }
         tr:nth-child(even) {
             background-color: #f2f2f2;
@@ -62,17 +69,18 @@
         tr:hover {
             background-color: #ddd;
         }
-
-        /* Ajustes específicos para pantallas grandes como TV */
+    
+        /* Ajustes para pantallas grandes */
         @media screen and (min-width: 1200px) {
             body {
-                font-size: 1.2rem; /* Escala el tamaño del texto */
+                font-size: 1rem;
             }
             th, td {
-                padding: 10px; /* Ajustar el espacio en celdas */
+                padding: 10px;
             }
-            h2 {
-                font-size: 1.8rem;
+            th:nth-child(6), /* Descripción */
+            td:nth-child(6) {
+                width: 30%;
             }
         }
     </style>
@@ -129,19 +137,16 @@
             const filteredRows = rows.filter(row => {
                 let mesesFaltantes = parseInt(row[14], 10) || 0;
                 const diasFaltantes = parseInt(row[15], 10) || 0;
-                const nivel = row[1]; // Nivel
-                const diasTotalesFaltan = parseInt(row[13], 10) || 0; // Columna N
+                const nivel = row[1];
+                const diasTotalesFaltan = parseInt(row[13], 10) || 0;
 
-                // Sumar un mes si los días faltantes (P) >= 1
                 if (diasFaltantes >= 1) {
                     mesesFaltantes += 1;
                 }
 
-                // Filtrar productos con vencimiento en los próximos 2 meses, excluir "PICKEO" y "N <= 0"
                 return nivel !== "PICKEO" && mesesFaltantes <= 2 && diasFaltantes >= 0 && diasTotalesFaltan > 0;
             });
 
-            // Ordenar por meses y días (más próximo primero)
             filteredRows.sort((a, b) => {
                 const mesesA = parseInt(a[14], 10) || 0;
                 const mesesB = parseInt(b[14], 10) || 0;
@@ -149,9 +154,9 @@
                 const diasB = parseInt(b[15], 10) || 0;
 
                 if (mesesA === mesesB) {
-                    return diasA - diasB; // Ordenar por días si los meses son iguales
+                    return diasA - diasB;
                 }
-                return mesesA - mesesB; // Ordenar por meses
+                return mesesA - mesesB;
             });
 
             updateTable(filteredRows, headers);
@@ -162,7 +167,7 @@
             tableBody.innerHTML = '';
 
             rows.forEach(row => {
-                const selectedColumns = [0, 1, 2, 3, 4, 5, 6, 12, 14, 15]; // Columnas a mostrar sin "Total"
+                const selectedColumns = [0, 1, 2, 3, 4, 5, 6, 12, 14, 15];
                 const tr = document.createElement('tr');
 
                 selectedColumns.forEach(index => {
@@ -175,8 +180,12 @@
             });
         }
 
-        // Cargar datos al cargar la página
         window.onload = fetchSheetData;
+
+        // Refresca la página automáticamente cada 5 minutos (300000 milisegundos)
+        setInterval(() => {
+            location.reload();
+        }, 300000); // 5 minutos en milisegundos
     </script>
 </body>
 </html>

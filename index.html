@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Productos con Vencimiento en los Próximos 2 Meses</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .table-container {
+            margin: 20px auto;
+            width: 100%; /* Ocupa todo el ancho disponible */
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow-x: auto; /* Permitir desplazamiento horizontal si es necesario */
+        }
+        h2 {
+            text-align: center; /* Centramos el título */
+            color: #333;
+        }
+        table {
+            width: 100%; /* La tabla ocupa todo el ancho del contenedor */
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center; /* Centramos los encabezados */
+            font-size: 0.9rem; /* Tamaño más compacto */
+            background-color: #4CAF50;
+            color: white;
+            text-transform: uppercase; /* Transformar a mayúsculas */
+        }
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left; /* Alineamos los datos a la izquierda */
+            font-size: 0.9rem;
+        }
+        td:nth-child(7), /* BULTOS */
+        td:nth-child(9), /* MESES FALTANTES */
+        td:nth-child(10) /* DIAS FALTANTES */ {
+            text-align: center; /* Centramos los datos */
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #ddd;
+        }
+
+        /* Ajustes específicos para pantallas grandes como TV */
+        @media screen and (min-width: 1200px) {
+            body {
+                font-size: 1.2rem; /* Escala el tamaño del texto */
+            }
+            th, td {
+                padding: 10px; /* Ajustar el espacio en celdas */
+            }
+            h2 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="table-container">
+            <h2>Productos con Vencimiento en los Próximos 2 Meses</h2>
+            <table id="vencimientosTable">
+                <thead>
+                    <tr>
+                        <th>Bodega</th>
+                        <th>Nivel</th>
+                        <th>Pasillo</th>
+                        <th>Rack</th>
+                        <th>Código Venta</th>
+                        <th>Descripción</th>
+                        <th>Bultos</th>
+                        <th>Vencimiento</th>
+                        <th>Meses Faltantes</th>
+                        <th>Días Faltantes</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const sheetId = "14vKByKKwolk5nZI-vMiZrbQ2aJJtpmr8WmJ_66wO5Uo";
+        const apiKey = "AIzaSyDbA-dK7hWr47qmihqEH87K7IR22jRYgkY"; // Reemplaza con tu clave de API
+        const sheetName = "RESUMEN";
+
+        async function fetchSheetData() {
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A1:P?key=${apiKey}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.values) {
+                    processSheetData(data.values);
+                } else {
+                    console.error("No se encontraron datos en la hoja.");
+                }
+            } catch (error) {
+                console.error("Error al obtener los datos de Google Sheets:", error);
+            }
+        }
+
+        function processSheetData(data) {
+            const headers = data[0];
+            const rows = data.slice(1);
+            const filteredRows = rows.filter(row => {
+                let mesesFaltantes = parseInt(row[14], 10) || 0;
+                const diasFaltantes = parseInt(row[15], 10) || 0;
+                const nivel = row[1]; // Nivel
+                const diasTotalesFaltan = parseInt(row[13], 10) || 0; // Columna N
+
+                // Sumar un mes si los días faltantes (P) >= 1
+                if (diasFaltantes >= 1) {
+                    mesesFaltantes += 1;
+                }
+
+                // Filtrar productos con vencimiento en los próximos 2 meses, excluir "PICKEO" y "N <= 0"
+                return nivel !== "PICKEO" && mesesFaltantes <= 2 && diasFaltantes >= 0 && diasTotalesFaltan > 0;
+            });
+
+            // Ordenar por meses y días (más próximo primero)
+            filteredRows.sort((a, b) => {
+                const mesesA = parseInt(a[14], 10) || 0;
+                const mesesB = parseInt(b[14], 10) || 0;
+                const diasA = parseInt(a[15], 10) || 0;
+                const diasB = parseInt(b[15], 10) || 0;
+
+                if (mesesA === mesesB) {
+                    return diasA - diasB; // Ordenar por días si los meses son iguales
+                }
+                return mesesA - mesesB; // Ordenar por meses
+            });
+
+            updateTable(filteredRows, headers);
+        }
+
+        function updateTable(rows, headers) {
+            const tableBody = document.querySelector('#vencimientosTable tbody');
+            tableBody.innerHTML = '';
+
+            rows.forEach(row => {
+                const selectedColumns = [0, 1, 2, 3, 4, 5, 6, 12, 14, 15]; // Columnas a mostrar sin "Total"
+                const tr = document.createElement('tr');
+
+                selectedColumns.forEach(index => {
+                    const td = document.createElement('td');
+                    td.textContent = row[index];
+                    tr.appendChild(td);
+                });
+
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // Cargar datos al cargar la página
+        window.onload = fetchSheetData;
+    </script>
+</body>
+</html>
